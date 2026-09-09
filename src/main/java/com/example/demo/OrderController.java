@@ -1,0 +1,47 @@
+package com.example.demo;
+
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequestMapping("/orders")
+@RequiredArgsConstructor
+public class OrderController {
+
+    private final OrderRepository orderRepository;
+
+    @PostMapping
+    public ResponseEntity<OrderResponse> create(@Valid @RequestBody CreateOrderRequest request) {
+        Order order = new Order();
+        order.setProductName(request.productName());
+        order.setQuantity(request.quantity());
+        order.setPrice(request.price());
+        Order saved = orderRepository.save(order);
+        return ResponseEntity.status(HttpStatus.CREATED).body(OrderResponse.from(saved));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<OrderResponse> getById(@PathVariable UUID id) {
+        Order order = orderRepository.findById(id)
+            .orElseThrow(() -> new OrderNotFoundException(id));
+        return ResponseEntity.ok(OrderResponse.from(order));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<OrderResponse>> getAll() {
+        return ResponseEntity.ok(orderRepository.findAll().stream()
+            .map(OrderResponse::from).toList());
+    }
+}
