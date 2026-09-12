@@ -23,6 +23,7 @@ public class OrderController {
 
     private final OrderRepository orderRepository;
     private final IdempotencyService idempotencyService;
+    private final OrderCacheService orderCacheService;
 
     @PostMapping
     public ResponseEntity<OrderResponse> create(
@@ -50,16 +51,19 @@ public class OrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<OrderResponse> getById(@PathVariable UUID id) {
-        Order order = orderRepository.findById(id)
-            .orElseThrow(() -> new OrderNotFoundException(id));
-        return ResponseEntity.ok(OrderResponse.from(order));
+  @GetMapping("/{id}")
+public ResponseEntity<OrderResponse> getById(@PathVariable UUID id) {
+    OrderResponse cached = orderCacheService.getCachedOrder(id);
+    if (cached != null) {
+        return ResponseEntity.ok(cached);
     }
 
-    @GetMapping
-    public ResponseEntity<List<OrderResponse>> getAll() {
-        return ResponseEntity.ok(orderRepository.findAll().stream()
-            .map(OrderResponse::from).toList());
-    }
+    Order order = orderRepository.findById(id)
+        .orElseThrow(() -> new OrderNotFoundException(id));
+    OrderResponse response = OrderResponse.from(order);
+
+    orderCacheService.cacheOrder(id, response);
+
+    return ResponseEntity.ok(response);
+}
 }
