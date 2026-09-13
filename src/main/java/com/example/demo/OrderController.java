@@ -51,19 +51,25 @@ public class OrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-  @GetMapping("/{id}")
-public ResponseEntity<OrderResponse> getById(@PathVariable UUID id) {
-    OrderResponse cached = orderCacheService.getCachedOrder(id);
-    if (cached != null) {
-        return ResponseEntity.ok(cached);
+    @GetMapping("/{id}")
+    public ResponseEntity<OrderResponse> getById(@PathVariable UUID id) {
+        OrderResponse cached = orderCacheService.getCachedOrder(id);
+        if (cached != null) {
+            return ResponseEntity.ok(cached);
+        }
+
+        Order order = orderRepository.findById(id)
+            .orElseThrow(() -> new OrderNotFoundException(id));
+        OrderResponse response = OrderResponse.from(order);
+
+        orderCacheService.cacheOrder(id, response);
+
+        return ResponseEntity.ok(response);
     }
 
-    Order order = orderRepository.findById(id)
-        .orElseThrow(() -> new OrderNotFoundException(id));
-    OrderResponse response = OrderResponse.from(order);
-
-    orderCacheService.cacheOrder(id, response);
-
-    return ResponseEntity.ok(response);
-}
+    @GetMapping
+    public ResponseEntity<List<OrderResponse>> getAll() {
+        return ResponseEntity.ok(orderRepository.findAll().stream()
+            .map(OrderResponse::from).toList());
+    }
 }
